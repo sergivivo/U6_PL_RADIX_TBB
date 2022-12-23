@@ -100,6 +100,26 @@ void map_index(
 
 // Radix sorting function
 std::vector<uint32_t> radix_sort(const std::vector<uint32_t> input) {
+    /*
+    Ejemplo:
+        Check with mask 0x00000001:
+            input  = [5, 4, 3, 2, 1]
+
+            map    = [1, 0, 1, 0, 1] // Map apply mask
+
+            scan1  = [0, 1, 1, 2, 2] // Scan count zeroes
+            scan2  = [1, 1, 2, 2, 3] // Scan count ones
+
+            Para cada elemento de input:
+                Si su valor en map es 0:
+                    Indice output indicado en scan1
+                Si su valor en map es 1:
+                    Indice output indicado en scan2 
+                    (sumándole al índice máximo de scan1)
+
+            output = [4, 2, 5, 3, 1]
+    */
+
     const uint16_t N = input.size();
 
     std::vector<uint8_t> map(N); // Map function applies mask
@@ -110,7 +130,7 @@ std::vector<uint32_t> radix_sort(const std::vector<uint32_t> input) {
     // Alterna entre arrays auxiliares cada iteración
     std::vector<uint32_t> aux1(N);
     std::vector<uint32_t> aux2(N);
-    std::vector<uint32_t> inp, out;
+    std::vector<uint32_t> *inp, *out;
 
     // Array copy
     for(uint16_t idx = 0; idx < N; idx++) {
@@ -118,51 +138,38 @@ std::vector<uint32_t> radix_sort(const std::vector<uint32_t> input) {
     }
 
     // Count digits for the max value
-    uint32_t max = max_value(input);
+    uint32_t max = max_value(input); // O(log(n))
     uint8_t digits = 0;
-    while(max > 0) {
+    while(max > 0) { 
         max >>= 1;
         digits++;
     }
 
 
     // Solution
+    out = &aux1;
     for(uint8_t d = 0; d < digits; d++) {
         // Switch input and output arrays every iteration
-        inp = d % 2 ? aux1 : aux2;
-        out = d % 2 ? aux2 : aux1;
+        inp = d % 2 ? &aux2 : &aux1;
+        out = d % 2 ? &aux1 : &aux2;
 
         uint32_t mask = 1 << d;
-        std::cout << mask << std::endl;
 
-        // Map mask check
-        map_mask(inp, map, mask);
-    std::cout << "Map vector: " ;
-    for (auto i: map)
-        std::cout << +i << ' ';
-    std::cout << std::endl;
+        // Map mask check - O(1)
+        map_mask(*inp, map, mask);
 
-        // Scan count zeroes and ones
+        // Scan count zeroes and ones - O(n*log(n))
         scan_count(map, scan1, scan2);
-    std::cout << "Scan 1 vector: " ;
-    for (auto i: scan1)
-        std::cout << i << ' ';
-    std::cout << std::endl;
-    std::cout << "Scan 2 vector: " ;
-    for (auto i: scan2)
-        std::cout << i << ' ';
-    std::cout << std::endl;
 
-        // Map input elements to specific indexes at output vector
-        map_index(inp, map, scan1, scan2, out);
-    std::cout << "Output vector: " ;
-    for (auto i: out)
-        std::cout << i << ' ';
-    std::cout << std::endl;
+        // Map input elements to specific indexes at output vector - O(1)
+        map_index(*inp, map, scan1, scan2, *out);
 
-    }
+    } // log2(n) iterations
 
-    return out;
+    // Tiempo total tras paralelizar:
+    //     Reduce:  Iterations:  Map:      Scan:       Map:     Result:
+    //     O(log(n)) + log(n) * (O(1) + O(n*log(n)) + O(1)) = O(n*log(n))
+    return *out;
 }
 
 int main() {
